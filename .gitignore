@@ -9,7 +9,6 @@ target/
 *.class
 **/*.groovy.class
 
-*.jar
 *.war
 *.ear
 *.zip
@@ -20,7 +19,6 @@ test-results/
 tests-results/
 reports/
 
-spock-reports/
 allure-results/
 allure-report/
 
@@ -34,3 +32,4 @@ temp/
 *.log
 
 local.properties
+

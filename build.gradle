@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'groovy'
     id "io.qameta.allure" version "2.12.0"
 }
 
@@ -9,18 +8,20 @@ version = '1.0.0'
 
 ext {
     javaVersion = 21
-
     restAssuredVersion = '5.5.0'
-    commonsLangVersion = '3.18.0'
-
-    groovyVersion = '4.0.22'
-    spockVersion = '2.3-groovy-4.0'
-    spockReportsVersion = '2.5.1-groovy-4.0'
 
     lombokVersion = '1.18.30'
     jacksonVersion = '2.17.1'
 
     allureVersion = "2.27.0"
+    aspectjVersion = "1.9.22"
+
+    junitVersion = "5.10.2"
+
+    ownerVersion = "1.0.12"
+    curlLoggerVersion = "3.0.0"
+    logbackVersion = "1.5.6"
+    assertjVersion = "3.26.3"
 }
 
 java {
@@ -32,7 +33,6 @@ java {
 repositories { mavenCentral() }
 
 configurations.configureEach {
-    exclude group: "io.qameta.allure", module: "allure-spock"
     exclude group: "io.qameta.allure", module: "allure-junit4"
     exclude group: "junit", module: "junit"
 }
@@ -41,21 +41,27 @@ dependencies {
     implementation "io.rest-assured:rest-assured:${restAssuredVersion}"
     implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+
+    implementation "org.aeonbits.owner:owner:${ownerVersion}"
+
     implementation platform("io.qameta.allure:allure-bom:${allureVersion}")
     implementation "io.qameta.allure:allure-rest-assured"
 
+    implementation "org.aspectj:aspectjrt:${aspectjVersion}"
+    implementation "org.aspectj:aspectjweaver:${aspectjVersion}"
+
+    implementation "com.github.dzieciou.testing:curl-logger:${curlLoggerVersion}"
+    implementation "ch.qos.logback:logback-classic:${logbackVersion}"
+
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-
-    testImplementation platform("org.apache.groovy:groovy-bom:${groovyVersion}")
-    testImplementation "org.apache.groovy:groovy"
-
-    testImplementation "org.spockframework:spock-core:${spockVersion}"
-    testImplementation "com.athaydes:spock-reports:${spockReportsVersion}"
-
+    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
+    testRuntimeOnly  "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
     testImplementation platform("io.qameta.allure:allure-bom:${allureVersion}")
-    testImplementation "io.qameta.allure:allure-spock2"
+
     testImplementation "io.rest-assured:json-schema-validator:${restAssuredVersion}"
+    testImplementation "org.assertj:assertj-core:${assertjVersion}"
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -63,19 +69,32 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.withType(Test).configureEach {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        def tagProp = System.getProperty("tag")
+        if (tagProp) {
+            includeTags(tagProp.split(",")*.trim() as String[])
+        }
+    }
 
-    include '**/*Spec.class'
+    include '**/*Test.class'
+
+    [
+            "ENV",
+            "BASE_URL",
+            "API_PREFIX",
+            "HTTP_CONNECT_TIMEOUT_MS",
+            "HTTP_SOCKET_TIMEOUT_MS"
+    ].each { key ->
+        def value = System.getProperty(key) ?: System.getenv(key)
+        if (value != null && !value.toString().isBlank()) {
+            systemProperty key, value
+        }
+    }
 
     reports {
         junitXml.required = true
         html.required = true
     }
-
-    systemProperty(
-            "spock.reports.outputDir",
-            layout.buildDirectory.dir("reports/spock-${name}").get().asFile.absolutePath
-    )
 
     testLogging {
         events "FAILED", "SKIPPED"
@@ -83,21 +102,16 @@ tasks.withType(Test).configureEach {
     }
 }
 
-
-test {
-     maxParallelForks = 1
-}
-
+test { maxParallelForks = 1 }
 
 tasks.register('smoke', Test) {
-    useJUnitPlatform {
-        includeTags 'smoke'
-    }
-    include '**/*Spec.class'
+    useJUnitPlatform { includeTags 'smoke' }
+    include '**/*Test.class'
     maxParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2) as int)
 }
 
 tasks.register('regression', Test) {
+    include '**/*Test.class'
     maxParallelForks = Math.min(4, Math.max(1, (Runtime.runtime.availableProcessors() / 2) as int))
 }
 
@@ -107,10 +121,6 @@ allure {
     }
     adapter {
         aspectjWeaver.set(true)
-        frameworks {
-            spock2 {
-                enabled.set(true)
-            }
         }
     }
-}
+

@@ -1,0 +1,11 @@
+<aspectj>
+
+    <aspects>
+        <aspect name="com.assessment.bookstore.allure.AllureStepAspect"/>
+    </aspects>
+
+    <weaver options="-verbose:false">
+        <include within="com.assessment.bookstore..*"/>
+    </weaver>
+
+</aspectj>

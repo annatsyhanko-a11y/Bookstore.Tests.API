@@ -9,6 +9,7 @@ public class AuthorsClient {
     private static final String AUTHOR_BY_ID = AUTHORS + "/{id}";
     private static final String AUTHORS_BY_BOOK = AUTHORS + "/authors/books/{idBook}";
 
+
     public Response getAll() {
         return ApiClient.givenApi()
                 .when()

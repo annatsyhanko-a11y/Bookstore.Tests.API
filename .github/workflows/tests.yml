@@ -1,0 +1,194 @@
+name: API Tests by params
+
+run-name: >
+  env=${{ inputs.env }}
+  • tags=${{ inputs.tags || 'all' }}
+  • ${{ github.ref_name }} • #${{ github.run_number }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Target environment (loads env/{ENV}.properties)"
+        required: true
+        type: choice
+        default: qa
+        options:
+          - qa
+
+      tags:
+        description: "Comma-separated tags to include (e.g. smoke, regression, smoke,regression). Leave empty to run ALL tests."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
+      - name: Run tests (ENV + optional tag filter)
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+
+          TAGS="${{ inputs.tags }}"
+          PROPS="-DENV=${{ inputs.env }}"
+
+          if [ -n "$TAGS" ]; then
+            echo "Running with tag filter: $TAGS"
+            PROPS="$PROPS -Dtag=$TAGS"
+            REPORT_KEY_RAW="$TAGS"
+          else
+            echo "Running ALL tests (no tag filter)"
+            REPORT_KEY_RAW="all"
+          fi
+
+          # sanitize for URL/path
+          REPORT_DIR="$(echo "$REPORT_KEY_RAW" | tr ', ' '--' | tr -cd '[:alnum:]_-')"
+          if [ -z "$REPORT_DIR" ]; then REPORT_DIR="all"; fi
+          echo "REPORT_DIR=$REPORT_DIR" >> "$GITHUB_ENV"
+
+          echo "Gradle command:"
+          echo "./gradlew test $PROPS"
+          ./gradlew test $PROPS
+          TEST_EXIT_CODE=$?
+
+          echo "TEST_EXIT_CODE=$TEST_EXIT_CODE" >> "$GITHUB_ENV"
+          echo "test_exit_code=$TEST_EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+          echo "Tests finished with exit code: $TEST_EXIT_CODE"
+          exit 0
+
+      - name: Generate Allure report
+        if: always()
+        shell: bash
+        run: |
+          # generate if possible, but don't crash job here
+          ./gradlew allureReport || true
+
+      - name: Prepare GitHub Pages content (like regression)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Searching for Allure index.html..."
+          INDEX_HTML="$(find build -type f -name index.html -path "*allure*report*" | head -n 1 || true)"
+
+          rm -rf pages
+          mkdir -p "pages/${REPORT_DIR}"
+
+          if [ -n "$INDEX_HTML" ]; then
+            REPORT_SRC_DIR="$(dirname "$INDEX_HTML")"
+            echo "Found Allure report dir: $REPORT_SRC_DIR"
+            cp -r "$REPORT_SRC_DIR"/* "pages/${REPORT_DIR}/"
+            test -f "pages/${REPORT_DIR}/index.html"
+          else
+            echo "Allure report not found. Creating placeholder report page."
+            printf '%s\n' \
+              '<!doctype html>' \
+              '<html>' \
+              '  <head><meta charset="utf-8"><title>Allure report not available</title></head>' \
+              '  <body style="font-family: Arial, sans-serif;">' \
+              '    <h2>Allure report was not generated</h2>' \
+              '    <p>Check workflow artifacts:</p>' \
+              '    <ul>' \
+              '      <li><code>build/allure-results</code></li>' \
+              '      <li><code>build/test-results</code></li>' \
+              '      <li><code>build/reports/tests</code></li>' \
+              '    </ul>' \
+              '  </body>' \
+              '</html>' \
+              > "pages/${REPORT_DIR}/index.html"
+          fi
+
+          # Root index (menu) — same idea as regression
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<html>' \
+            '  <head><meta charset="utf-8"><title>Test Reports</title></head>' \
+            '  <body style="font-family: Arial, sans-serif;">' \
+            '    <h2>Test Reports</h2>' \
+            '    <ul>' \
+            "      <li><a href=\"./${REPORT_DIR}/\">Allure (${REPORT_DIR})</a></li>" \
+            '    </ul>' \
+            '  </body>' \
+            '</html>' \
+            > pages/index.html
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          TAGS="${{ inputs.tags }}"
+          if [ -z "$TAGS" ]; then TAGS="all"; fi
+
+          {
+            echo "## API Test Report"
+            echo ""
+            echo "- **Run:** #${{ github.run_number }}"
+            echo "- **Branch:** ${{ github.ref_name }}"
+            echo "- **ENV:** ${{ inputs.env }}"
+            echo "- **Tags:** $TAGS"
+            echo "- **Test exit code:** ${TEST_EXIT_CODE:-unknown}"
+            echo ""
+            echo "**Open report:** ${{ steps.deployment.outputs.page_url }}${REPORT_DIR}/"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_number }}
+          path: |
+            build/allure-results/
+            build/reports/allure-report/
+            build/test-results/
+            build/reports/
+          retention-days: 30
+
+      - name: Fail job if tests failed
+        if: always()
+        shell: bash
+        run: |
+          if [ "${TEST_EXIT_CODE:-0}" -ne 0 ]; then
+            echo "Tests failed (exit code ${TEST_EXIT_CODE}). Failing job."
+            exit 1
+          fi
+          echo "Tests passed"

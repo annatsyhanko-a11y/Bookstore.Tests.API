@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class JsonUtils {
 
+    private JsonUtils() {
+    }
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     public static <T> T fromJson(String json, Class<T> clazz) {

@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AuthorsList",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["id", "idBook"],
+    "properties": {
+      "id": { "type": "integer" },
+      "idBook": { "type": "integer" },
+      "firstName": { "type": ["string", "null"] },
+      "lastName": { "type": ["string", "null"] }
+    }
+  }
+}
