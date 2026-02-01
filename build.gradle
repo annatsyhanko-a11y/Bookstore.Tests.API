@@ -1,0 +1,116 @@
+plugins {
+    id 'java'
+    id 'groovy'
+    id "io.qameta.allure" version "2.12.0"
+}
+
+group = 'com.assessment.bookstore'
+version = '1.0.0'
+
+ext {
+    javaVersion = 21
+
+    restAssuredVersion = '5.5.0'
+    commonsLangVersion = '3.18.0'
+
+    groovyVersion = '4.0.22'
+    spockVersion = '2.3-groovy-4.0'
+    spockReportsVersion = '2.5.1-groovy-4.0'
+
+    lombokVersion = '1.18.30'
+    jacksonVersion = '2.17.1'
+
+    allureVersion = "2.27.0"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(javaVersion)
+    }
+}
+
+repositories { mavenCentral() }
+
+configurations.configureEach {
+    exclude group: "io.qameta.allure", module: "allure-spock"
+    exclude group: "io.qameta.allure", module: "allure-junit4"
+    exclude group: "junit", module: "junit"
+}
+
+dependencies {
+    implementation "io.rest-assured:rest-assured:${restAssuredVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation platform("io.qameta.allure:allure-bom:${allureVersion}")
+    implementation "io.qameta.allure:allure-rest-assured"
+
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    testImplementation platform("org.apache.groovy:groovy-bom:${groovyVersion}")
+    testImplementation "org.apache.groovy:groovy"
+
+    testImplementation "org.spockframework:spock-core:${spockVersion}"
+    testImplementation "com.athaydes:spock-reports:${spockReportsVersion}"
+
+    testImplementation platform("io.qameta.allure:allure-bom:${allureVersion}")
+    testImplementation "io.qameta.allure:allure-spock2"
+    testImplementation "io.rest-assured:json-schema-validator:${restAssuredVersion}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+
+    include '**/*Spec.class'
+
+    reports {
+        junitXml.required = true
+        html.required = true
+    }
+
+    systemProperty(
+            "spock.reports.outputDir",
+            layout.buildDirectory.dir("reports/spock-${name}").get().asFile.absolutePath
+    )
+
+    testLogging {
+        events "FAILED", "SKIPPED"
+        exceptionFormat "FULL"
+    }
+}
+
+
+test {
+     maxParallelForks = 1
+}
+
+
+tasks.register('smoke', Test) {
+    useJUnitPlatform {
+        includeTags 'smoke'
+    }
+    include '**/*Spec.class'
+    maxParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2) as int)
+}
+
+tasks.register('regression', Test) {
+    maxParallelForks = Math.min(4, Math.max(1, (Runtime.runtime.availableProcessors() / 2) as int))
+}
+
+allure {
+    report {
+        version.set(allureVersion)
+    }
+    adapter {
+        aspectjWeaver.set(true)
+        frameworks {
+            spock2 {
+                enabled.set(true)
+            }
+        }
+    }
+}
