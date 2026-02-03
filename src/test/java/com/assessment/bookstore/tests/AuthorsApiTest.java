@@ -2,6 +2,7 @@ package com.assessment.bookstore.tests;
 
 import com.assessment.bookstore.model.Author;
 import com.assessment.bookstore.data.schema.SchemaPaths;
+import io.qameta.allure.Feature;
 import io.qameta.allure.Issue;
 import io.restassured.response.Response;
 import org.apache.http.HttpStatus;
@@ -21,6 +22,7 @@ import static com.assessment.bookstore.data.TestData.author;
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Feature("Authors API")
 class AuthorsApiTest extends BaseApiTest {
 
     private static final int EXISTING_ID = 1;

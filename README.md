@@ -182,7 +182,6 @@ Parallel execution is configurable per task:
 - `smoke` and `regression` tasks scale based on available CPU cores
 
 This ensures stability while allowing faster execution for larger suites.
-
 ---
 ## [CI/CD (GitHub Actions)](https://github.com/annatsyhanko-a11y/Bookstore.Tests.API/actions)
 
@@ -199,7 +198,7 @@ This repository includes **four workflows** under `.github/workflows/`:
 Purpose: quick, cheap signal that the pipeline and tests can start successfully after each push to `main`.
 
 It runs a limited smoke validation:
-- `./gradlew smoke --tests "*BooksApiSpec*"` (a focused subset)
+- `./gradlew smoke --tests "*BooksApiTest*"` (a focused subset)
 
 This is intentionally fast to catch obvious breakages early (Gradle, dependencies, test discovery, basic execution).  
 See workflow: `.github/workflows/ci-check.yml`.
