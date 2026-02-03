@@ -31,7 +31,7 @@ The framework supports:
 - Multiple environments (The framework currently includes a qa environment by default. Additional environments (e.g. stage, prod) can be added easily by providing corresponding configuration files under the env/ directory.)
 - Runtime overrides via system properties or environment variables
 - Tag-based execution (smoke, regression, etc.)
-- Rich test reporting with Allure
+- Test reporting with Allure
 
 ---
 
@@ -149,7 +149,7 @@ Multiple tags:
 | Task | Description |
 |-----|-------------|
 | `test` | Full test execution |
-| `smoke` | tags.Smoke test suite |
+| `smoke` | Smoke test suite |
 | `regression` | Regression test suite |
 | `allureReport` | Generates Allure report |
 | `allureServe` | Serves Allure report locally |
@@ -181,7 +181,6 @@ Parallel execution is configurable per task:
 - Default `test` task runs with a single fork
 - `smoke` and `regression` tasks scale based on available CPU cores
 
-This ensures stability while allowing faster execution for larger suites.
 ---
 ## [CI/CD (GitHub Actions)](https://github.com/annatsyhanko-a11y/Bookstore.Tests.API/actions)
 
@@ -203,9 +202,9 @@ It runs a limited smoke validation:
 This is intentionally fast to catch obvious breakages early (Gradle, dependencies, test discovery, basic execution).  
 See workflow: `.github/workflows/ci-check.yml`.
 
-#### tags.Smoke Tests (manual)
+#### Smoke Tests (manual)
 
-Purpose: run the smoke suite on demand and publish a **tags.Smoke Allure** report.
+Purpose: run the smoke suite on demand and publish a **Smoke Allure** report.
 
 Key behavior:
 - Executes `./gradlew smoke`
