@@ -15,30 +15,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔹 BUILD DOCKER IMAGE
+      # 🔹 BUILD TEST IMAGE
       - name: Build test Docker image
         run: docker build -t api-tests .
 
-      # 🔹 RUN TESTS INSIDE DOCKER
+      # 🔹 RUN TESTS (GENERATE allure-results)
       - name: Run smoke tests (Docker)
         id: tests
         continue-on-error: true
         run: |
           docker run \
-            -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
+            -v ${{ github.workspace }}/allure-results:/app/allure-results \
             api-tests smoke
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-
-      # 🔹 GENERATE ALLURE REPORT (via Gradle, no CLI)
-      - name: Generate Allure report
+      # 🔹 GENERATE ALLURE REPORT (INSIDE DOCKER)
+      - name: Generate Allure report (Docker)
         if: always()
         run: |
-          ./gradlew allureReport \
-            -Dallure.results.directory=allure-results
+          docker run \
+            -v ${{ github.workspace }}/allure-results:/app/allure-results \
+            -v ${{ github.workspace }}/allure-report:/app/build/allure-report \
+            api-tests allureReport
 
-      # 🔹 UPLOAD ARTIFACTS
+      # 🔹 UPLOAD ALLURE RESULTS
       - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
@@ -47,12 +46,13 @@ jobs:
           path: allure-results
           retention-days: 30
 
+      # 🔹 UPLOAD ALLURE REPORT
       - name: Upload Allure report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report-smoke-${{ github.run_number }}
-          path: build/allure-report
+          path: allure-report
           retention-days: 30
 
       # 🔹 JOB SUMMARY
