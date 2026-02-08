@@ -19,7 +19,7 @@ test-results/
 tests-results/
 reports/
 
-allure-results/
+build/allure-results/
 allure-report/
 
 generated/
