@@ -28,6 +28,9 @@ jobs:
             -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
             api-tests smoke
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x gradlew
+
       # 🔹 GENERATE ALLURE REPORT (via Gradle, no CLI)
       - name: Generate Allure report
         if: always()
