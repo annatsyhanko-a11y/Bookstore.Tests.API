@@ -33,7 +33,7 @@ jobs:
         if: always()
         run: |
           docker run \
-            -v ${{ github.workspace }}/allure-results:/app/allure-results \
+            -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
             -v ${{ github.workspace }}/allure-report:/app/build/allure-report \
             api-tests allureReport
 
