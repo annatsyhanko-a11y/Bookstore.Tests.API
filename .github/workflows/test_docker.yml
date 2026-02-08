@@ -26,7 +26,7 @@ jobs:
         run: |
           docker run \
             -v "${{ github.workspace }}/allure-results:/app/build/allure-results" \
-            -v "${{ github.workspace }}/allure-report:/app/build/allure-report" \
+            -v "${{ github.workspace }}/allure-report:/app/build/reports/allure-report" \
             api-tests smoke allureReport
 
       # 🔹 UPLOAD ALLURE RESULTS
