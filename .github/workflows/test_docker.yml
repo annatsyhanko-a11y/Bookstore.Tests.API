@@ -19,22 +19,22 @@ jobs:
       - name: Build test Docker image
         run: docker build -t api-tests .
 
-      # 🔹 RUN TESTS (GENERATE allure-results)
+      # 🔹 RUN SMOKE TESTS (GENERATE allure-results)
       - name: Run smoke tests (Docker)
         id: tests
         continue-on-error: true
         run: |
           docker run \
-           -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
-         api-tests smoke
+            -v "${{ github.workspace }}/allure-results:/app/build/allure-results" \
+            api-tests smoke
 
       # 🔹 GENERATE ALLURE REPORT (INSIDE DOCKER)
       - name: Generate Allure report (Docker)
         if: always()
         run: |
           docker run \
-            -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
-            -v ${{ github.workspace }}/allure-report:/app/build/allure-report \
+            -v "${{ github.workspace }}/allure-results:/app/build/allure-results" \
+            -v "${{ github.workspace }}/allure-report:/app/build/allure-report" \
             api-tests allureReport
 
       # 🔹 UPLOAD ALLURE RESULTS
@@ -59,11 +59,11 @@ jobs:
       - name: Add info to Job Summary
         if: always()
         run: |
-          echo "## Smoke Tests (Docker)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Artifacts:** Allure results & report uploaded" >> $GITHUB_STEP_SUMMARY
+          echo "## Smoke Tests (Docker)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Run:** #${{ github.run_number }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Branch:** ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Artifacts:** Allure results & report uploaded" >> "$GITHUB_STEP_SUMMARY"
 
       # 🔹 FAIL JOB IF TESTS FAILED
       - name: Fail job if tests failed
