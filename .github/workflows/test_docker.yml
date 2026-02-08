@@ -6,12 +6,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
   smoke:
@@ -34,67 +28,39 @@ jobs:
             -v ${{ github.workspace }}/allure-results:/app/build/allure-results \
             api-tests smoke
 
-      # 🔹 GENERATE ALLURE REPORT (NO ALLURE CLI NEEDED)
+      # 🔹 GENERATE ALLURE REPORT (via Gradle, no CLI)
       - name: Generate Allure report
         if: always()
         run: |
           ./gradlew allureReport \
             -Dallure.results.directory=allure-results
 
-      # 🔹 PREPARE GITHUB PAGES
-      - name: Prepare Pages root (smoke)
-        if: always()
-        run: |
-          rm -rf pages
-          mkdir -p pages/smoke
-          cp -r build/allure-report/* pages/smoke/
-
-          cat > pages/index.html << 'EOF'
-          <!doctype html>
-          <html>
-            <head><meta charset="utf-8"><title>Test Reports</title></head>
-            <body>
-              <h2>Test Reports</h2>
-              <ul>
-                <li><a href="./smoke/">Smoke Allure</a></li>
-              </ul>
-            </body>
-          </html>
-          EOF
-
-      # 🔹 UPLOAD & DEPLOY
-      - name: Upload Pages artifact
-        if: always()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: pages
-
-      - name: Deploy to GitHub Pages
-        if: always()
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-      # 🔹 JOB SUMMARY
-      - name: Add Smoke Allure link to Job Summary
-        if: always()
-        run: |
-          echo "## Smoke Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Open report:** ${{ steps.deployment.outputs.page_url }}smoke/" >> $GITHUB_STEP_SUMMARY
-
-      # 🔹 ARTIFACTS (OPTIONAL BUT GOOD)
-      - name: Upload raw results
+      # 🔹 UPLOAD ARTIFACTS
+      - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-results-${{ github.run_number }}
-          path: |
-            allure-results
-            build/allure-report
+          name: allure-results-smoke-${{ github.run_number }}
+          path: allure-results
           retention-days: 30
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-smoke-${{ github.run_number }}
+          path: build/allure-report
+          retention-days: 30
+
+      # 🔹 JOB SUMMARY
+      - name: Add info to Job Summary
+        if: always()
+        run: |
+          echo "## Smoke Tests (Docker)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Artifacts:** Allure results & report uploaded" >> $GITHUB_STEP_SUMMARY
 
       # 🔹 FAIL JOB IF TESTS FAILED
       - name: Fail job if tests failed
