@@ -117,12 +117,10 @@ tasks.register('regression', Test) {
 
 allure {
     report {
-        directory.set(layout.buildDirectory.dir("allure-report"))
         version.set(allureVersion)
     }
     adapter {
         aspectjWeaver.set(true)
-        allureResultsDirectory.set(layout.buildDirectory.dir("allure-results"))
         }
     }
 
